@@ -1,0 +1,74 @@
+# azure-pipelines-frontend.yml
+trigger:
+  branches:
+    include: [main, release/*]
+  tags:
+    include: [v*]
+  paths:
+    include: [frontend/*]
+
+pr:
+  branches:
+    include: [main]
+  paths:
+    include: [frontend/*]
+
+variables:
+  - group: "aws-credentials"
+  - name: imageRepository
+    value: "$(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/capstone-project-frontend"
+  - name: EKS_CLUSTER_NAME
+    value: "capstone-project"
+  - name: AWS_REGION
+    value: "us-east-2"
+
+stages:
+  - stage: PRChecks
+    displayName: "PR Fast Checks"
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    jobs:
+      - job: LintAndTest
+        steps:
+          - template: devops/templates/node-pr-checks.yml
+
+  - stage: BuildAndPush
+    displayName: "Build, Push and Sign"
+    condition: ne(variables['Build.Reason'], 'PullRequest')
+    jobs:
+      - job: Build
+        steps:
+          - template: devops/templates/aws-ecr-login.yml
+            parameters:
+              awsServiceConnection: "aws-service-connection"
+
+          - template: devops/templates/docker-build-push.yml
+            parameters:
+              imageRepository: $(imageRepository)
+              dockerContext: "frontend"
+              dockerfilePath: "frontend/Dockerfile"
+
+          - template: devops/templates/security-scans.yml
+            parameters:
+              imageRepository: $(imageRepository)
+              imageTag: $(Build.SourceVersion)
+
+          - template: devops/templates/image-signing.yml
+            parameters:
+              imageFullRef: "$(imageRepository):$(Build.SourceVersion)"
+
+          - template: devops/templates/publish-image-artifact.yml
+            parameters:
+              artifactName: "frontend-image"
+              imageRef: "$(imageRepository):$(Build.SourceVersion)"
+
+  - stage: DeployDev
+    displayName: "Deploy to Dev"
+    dependsOn: BuildAndPush
+    condition: succeeded()
+    jobs:
+      - template: devops/templates/deploy-eks.yml
+        parameters:
+          environment: 'dev'
+          namespace: 'dev'
+          chartPath: 'charts/frontend'
+          valuesFile: 'charts/frontend/values.yaml'

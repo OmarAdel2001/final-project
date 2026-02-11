@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: application-ingress
+  namespace: dev
+  annotations:
+    # AWS Load Balancer Controller annotations
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-2:214900426470:certificate/64e9a3e5-d71b-4a03-ac7d-6aac9ed67f69
+    # Health check configuration
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
+    # Security
+    # alb.ingress.kubernetes.io/security-groups: ${ALB_SECURITY_GROUP_ID}
+    # Tags
+    alb.ingress.kubernetes.io/tags: Environment=dev,ManagedBy=kubernetes
+spec:
+  tls:
+    - hosts:
+        - k8s-dev-applicat-175a760d5d-1525477425.us-east-2.elb.amazonaws.com
+      secretName: frontend-tls-secret
+  rules:
+    - http:
+        paths:
+          # Frontend routes (Catch-all)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

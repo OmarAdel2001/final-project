@@ -1,0 +1,162 @@
+# azure-pipelines-infra.yml
+trigger: none
+
+resources:
+  pipelines:
+    - pipeline: backend
+      source: backend-pipeline
+      trigger:
+        branches: [main, release/*, v*]
+    - pipeline: frontend
+      source: frontend-pipeline
+      trigger:
+        branches: [main, release/*, v*]
+
+variables:
+  - group: "aws-credentials"
+  - name: isMain
+    value: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
+  - name: isRelease
+    value: $[startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')]
+  - name: isTag
+    value: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/v')]
+
+stages:
+  - stage: KyvernoOps
+    displayName: "Kyverno Setup"
+    condition: or(always(), contains(variables['Build.SourceBranch'], 'kyverno/'))
+    jobs:
+      - job: Kyverno
+        steps:
+          - template: devops/templates/aws-ecr-login.yml
+            parameters:
+              awsServiceConnection: "aws-service-connection"
+          - template: devops/templates/kyverno-ops.yml
+            parameters:
+              action: "apply"
+
+  - stage: DeployDev
+    displayName: "Deploy to Dev"
+    condition: and(succeeded(), eq(variables['isMain'], 'true'))
+    jobs:
+      - deployment: Deploy
+        environment: "dev"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: backend
+                  artifact: backend-image
+                - download: frontend
+                  artifact: frontend-image
+
+                - script: |
+                    BACKEND_IMAGE=$(cat $(Pipeline.Workspace)/backend/backend-image/image-info.json | jq -r .image)
+                    FRONTEND_IMAGE=$(cat $(Pipeline.Workspace)/frontend/frontend-image/image-info.json | jq -r .image)
+                    echo "##vso[task.setvariable variable=BACKEND_IMAGE]$BACKEND_IMAGE"
+                    echo "##vso[task.setvariable variable=FRONTEND_IMAGE]$FRONTEND_IMAGE"
+                  displayName: "Parse Image Refs"
+
+                - template: devops/templates/k8s-deploy.yml
+                  parameters:
+                    awsServiceConnection: "aws-service-connection"
+                    clusterName: "capstone-project"
+                    namespace: "dev"
+                    manifestPath: "k8s/dev/"
+                    deploymentName: "backend"
+                    containerName: "fastapi"
+                    imageRef: $(BACKEND_IMAGE)
+
+                - template: devops/templates/k8s-deploy.yml
+                  parameters:
+                    awsServiceConnection: "aws-service-connection"
+                    clusterName: "capstone-project"
+                    namespace: "dev"
+                    manifestPath: "k8s/dev/"
+                    deploymentName: "frontend"
+                    containerName: "react"
+                    imageRef: $(FRONTEND_IMAGE)
+
+  - stage: DeployStaging
+    displayName: "Deploy to Staging"
+    condition: and(succeeded(), eq(variables['isRelease'], 'true'))
+    jobs:
+      - deployment: Deploy
+        environment: "staging"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: backend
+                  artifact: backend-image
+                - download: frontend
+                  artifact: frontend-image
+
+                - script: |
+                    BACKEND_IMAGE=$(cat $(Pipeline.Workspace)/backend/backend-image/image-info.json | jq -r .image)
+                    FRONTEND_IMAGE=$(cat $(Pipeline.Workspace)/frontend/frontend-image/image-info.json | jq -r .image)
+                    echo "##vso[task.setvariable variable=BACKEND_IMAGE]$BACKEND_IMAGE"
+                    echo "##vso[task.setvariable variable=FRONTEND_IMAGE]$FRONTEND_IMAGE"
+                  displayName: "Parse Image Refs"
+
+                - template: devops/templates/k8s-deploy.yml
+                  parameters:
+                    awsServiceConnection: "aws-service-connection"
+                    clusterName: "capstone-project"
+                    namespace: "staging"
+                    manifestPath: "k8s/staging/"
+                    deploymentName: "backend"
+                    containerName: "fastapi"
+                    imageRef: $(BACKEND_IMAGE)
+
+                - template: devops/templates/k8s-deploy.yml
+                  parameters:
+                    awsServiceConnection: "aws-service-connection"
+                    clusterName: "capstone-project"
+                    namespace: "staging"
+                    manifestPath: "k8s/staging/"
+                    deploymentName: "frontend"
+                    containerName: "react"
+                    imageRef: $(FRONTEND_IMAGE)
+
+  - stage: DeployProd
+    displayName: "Deploy to Prod"
+    condition: and(succeeded(), eq(variables['isTag'], 'true'))
+    jobs:
+      - deployment: Deploy
+        environment: "prod"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: backend
+                  artifact: backend-image
+                - download: frontend
+                  artifact: frontend-image
+
+                - script: |
+                    BACKEND_IMAGE=$(cat $(Pipeline.Workspace)/backend/backend-image/image-info.json | jq -r .image)
+                    FRONTEND_IMAGE=$(cat $(Pipeline.Workspace)/frontend/frontend-image/image-info.json | jq -r .image)
+                    echo "##vso[task.setvariable variable=BACKEND_IMAGE]$BACKEND_IMAGE"
+                    echo "##vso[task.setvariable variable=FRONTEND_IMAGE]$FRONTEND_IMAGE"
+                  displayName: "Parse Image Refs"
+
+                - template: devops/templates/k8s-deploy.yml
+                  parameters:
+                    awsServiceConnection: "aws-service-connection"
+                    clusterName: "capstone-project"
+                    namespace: "prod"
+                    manifestPath: "k8s/prod/"
+                    deploymentName: "backend"
+                    containerName: "fastapi"
+                    imageRef: $(BACKEND_IMAGE)
+
+                - template: devops/templates/k8s-deploy.yml
+                  parameters:
+                    awsServiceConnection: "aws-service-connection"
+                    clusterName: "capstone-project"
+                    namespace: "prod"
+                    manifestPath: "k8s/prod/"
+                    deploymentName: "frontend"
+                    containerName: "react"
+                    imageRef: $(FRONTEND_IMAGE)

@@ -1,0 +1,25 @@
+image:
+  repository: 067970016113.dkr.ecr.us-east-2.amazonaws.com/capstone-project-backend
+  pullPolicy: Always
+  tag: "latest"
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 5000
+
+vault:
+  role: "webapp-role"
+  secretPath: "secret/data/webapp/config"
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+serviceAccount:
+  create: true
+  name: "backend"
