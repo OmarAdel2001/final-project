@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Cloud-Native Vault Migration & EKS Deployment
 
 This project demonstrates a full migration from static Kubernetes secrets to a dynamic secret management system using **HashiCorp Vault** on AWS EKS.
@@ -69,3 +70,7 @@ To destroy all resources:
 ```bash
 terraform destroy -auto-approve
 ```
+=======
+# DevSecOps-NTI-Production-Project
+DevSecOps-NTI-Production-Project
+>>>>>>> a12b6a225d0f0071d27779e5636ba5f3aa03e4b1
