@@ -4,43 +4,7 @@ This document describes the high-level architecture of the DevSecOps project, in
 
 ## Architecture Diagram
 
-```mermaid
-graph TD
-    User([User]) -->|HTTPS| ALB[Application LoadBalancer]
-    
-    subgraph VPC [AWS VPC 10.0.0.0/16]
-        subgraph Public_Subnets [Public Subnets]
-            ALB
-            NAT[NAT Gateway]
-        end
-        
-        subgraph Private_Subnets [Private Subnets]
-            EKS_Control[EKS Control Plane]
-            
-            subgraph EKS_Nodes [EKS Worker Nodes]
-                Frontend[Frontend Pods\n(React)]
-                Backend[Backend Pods\n(Python Flask)]
-                FluentBit[Fluent Bit\n(Logging)]
-                CW_Agent[CloudWatch Agent\n(Metrics)]
-            end
-            
-            Redis[ElastiCache Redis]
-        end
-        
-        subgraph Database_Subnets [Database Subnets]
-            RDS[RDS PostgreSQL]
-        end
-    end
-    
-    Backend -->|Read/Write| RDS
-    Backend -->|Cache| Redis
-    Frontend -->|API Calls| ALB
-    ALB -->|Route traffic| Frontend
-    ALB -->|Route traffic| Backend
-    
-    FluentBit -->|Logs| CW[CloudWatch Logs]
-    CW_Agent -->|Metrics| CW
-```
+![Uploading architecture.png…]()
 
 ## Infrastructure Components
 
