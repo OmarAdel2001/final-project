@@ -1,76 +1,227 @@
-<<<<<<< HEAD
-# Cloud-Native Vault Migration & EKS Deployment
+---
 
-This project demonstrates a full migration from static Kubernetes secrets to a dynamic secret management system using **HashiCorp Vault** on AWS EKS.
+# 🚀 Production-Grade Cloud Architecture
 
-## 🏗 Architecture Overview
+---
 
-The infrastructure is built on AWS using Terraform and managed by Ansible.
+## 🏗️ High-Level Architecture Overview
 
-- **Vault Server**: Standalone EC2 instance (`t3.micro`) using **DynamoDB** as the storage backend and **AWS KMS** for Auto-Unseal.
-- **EKS Cluster**: Managed Kubernetes cluster (v1.29) with a managed node group.
-- **Database**: Amazon RDS (PostgreSQL) for persistent storage.
-- **Cache**: Amazon ElastiCache (Redis) for session/caching.
-- **Ingress**: AWS Application Load Balancer (ALB) and Service LoadBalancers for public access.
-- **Secret Injection**: Vault Agent Injector sidecars in Kubernetes pods to securely deliver credentials.
 
-## 🚀 Step-by-Step Implementation
 
-1.  **Infrastructure Provisioning**: Terraform was used to create the networking (VPC), security groups, database, cache, EKS, and the Vault EC2 instance.
-2.  **Vault Setup**:
-    - Installed Vault via Ansible.
-    - Configured DynamoDB storage and KMS Auto-Unseal.
-    - Initialized Vault and captured recovery keys.
-3.  **Kubernetes Integration**:
-    - Installed Vault Agent Injector via Helm.
-    - Configured a `Token Reviewer` ServiceAccount on EKS to allow Vault to verify pod identities.
-    - Enabled Kubernetes Auth Backend in Vault.
-4.  **Application Migration**:
-    - Modified backend manifests to remove static environment variables.
-    - Added Vault annotations to inject Database and Redis credentials at runtime.
-    - Corrected application startup commands (Flask vs Uvicorn).
 
-## 🛠 Problems Faced & Solutions
 
-| Problem | Root Cause | Solution |
-| :--- | :--- | :--- |
-| **ISP Hijacking** | ISP (Telecom Egypt) redirected/blocked port 8200 HTTP traffic. | Established an **SSH Tunnel** (`-L 8200:127.0.0.1:8200`) to access Vault securely via localhost. |
-| **Vault Auth 403** | Missing permissions for the external Vault server to talk to the EKS API. | Created a dedicated **ServiceAccount with `system:auth-delegator`** role and configured it in Vault. |
-| **Network Timeout** | EKS Cluster Security Group was blocking port 443 from the Vault SG. | Added an **Ingress Rule** to the EKS Cluster SG to allow Vault to perform token reviews. |
-| **Issuer Mismatch** | JWT validation failed due to OIDC issuer differences. | Configured the explicit **EKS OIDC Provider URL** and enabled `disable_iss_validation=true` in Vault. |
-| **Port Duplication** | `DATABASE_URL` had double ports (`5432:5432`) from Terraform outputs. | Corrected the Vault Agent template to remove the redundant hardcoded port. |
+This project implements a **secure, highly available, production-grade AWS architecture** following modern **DevSecOps, Zero-Trust, and Infrastructure as Code principles**.
 
-## 📟 List of Key Commands Used
+The system is designed with:
 
-```bash
-# Terraform
-terraform init && terraform apply -auto-approve
-terraform refresh && terraform output -raw vault_public_ip
+* 🔐 Defense-in-depth security
+* 🏗️ Modular Terraform infrastructure
+* ☸️ Kubernetes-native workload orchestration
+* 🔄 Automated CI/CD with supply chain security
+* 🔎 Policy enforcement & runtime governance
 
-# Vault Access (SSH Tunnel)
-ssh -i ~/.ssh/id_rsa -L 8200:127.0.0.1:8200 ec2-user@<VAULT_IP> -N -f
+---
 
-# Vault Configuration (Local CLI)
-export VAULT_ADDR="http://127.0.0.1:8200"
-vault secrets enable -path=secret kv-v2
-vault write auth/kubernetes/config kubernetes_host=<EKS_ENDPOINT> ...
+# 🌍 Architecture Diagram
 
-# Kubernetes
-./kubectl apply -f k8s/dev/
-./kubectl rollout restart deployment backend -n dev
-./kubectl logs <pod> -c vault-agent-init
+![Production Architecture](architecture.png)
 
-# Deployment Scripts
-./build-and-push.sh v1.0.0
-./deploy.sh v1.0.0
-```
+---
 
-## 🧹 Cleanup
-To destroy all resources:
-```bash
-terraform destroy -auto-approve
-```
-=======
-# DevSecOps-NTI-Production-Project
-DevSecOps-NTI-Production-Project
->>>>>>> a12b6a225d0f0071d27779e5636ba5f3aa03e4b1
+# 🏢 Infrastructure Layers
+
+---
+
+## 1️⃣ Edge & Perimeter Security
+
+### 🔹 CloudFront
+
+* Global CDN
+* TLS termination
+* DDoS protection (Shield)
+
+### 🔹 AWS WAF
+
+* L7 filtering
+* Rate limiting
+* OWASP rule sets
+
+### 🔹 Application Load Balancer
+
+* Layer 7 routing
+* Path-based routing
+* Kubernetes Ingress integration
+
+---
+
+## 2️⃣ Network Architecture (VPC Design)
+
+| Layer                | Purpose          | Internet Access |
+| -------------------- | ---------------- | --------------- |
+| Public Subnets       | ALB + NAT        | Yes             |
+| Private App Subnets  | EKS Worker Nodes | Outbound only   |
+| Private Data Subnets | RDS + Redis      | No              |
+
+### Key Design Decisions
+
+* 3-Tier Architecture (Public / App / Data)
+* Multi-AZ High Availability
+* NAT for controlled outbound traffic
+* No direct internet access to compute or database
+
+---
+
+## 3️⃣ Compute Layer – Amazon EKS
+
+* Managed Kubernetes Control Plane
+* Managed Node Groups (Auto Scaling)
+* Private Subnet Deployment
+* IAM Roles for Service Accounts (IRSA)
+* OIDC Integration
+
+### Namespaces
+
+* `final-project`
+
+### Security Controls
+
+* Kyverno policy engine
+* Image signature verification (Cosign)
+* Non-root container enforcement
+* Resource limits enforced
+
+---
+
+## 4️⃣ Data Layer
+
+### 🔹 Amazon RDS (PostgreSQL)
+
+* Multi-AZ deployment
+* Automated backups
+* Encrypted at rest (KMS)
+* Private subnet only
+
+### 🔹 ElastiCache Redis
+
+* In-memory caching
+* Encrypted in transit (TLS)
+* Reduces RDS load
+* Private subnet isolation
+
+---
+
+## 5️⃣ Container Security & Supply Chain
+
+| Stage             | Tool    | Purpose                    |
+| ----------------- | ------- | -------------------------- |
+| Static IaC Scan   | Trivy   | Scan Terraform             |
+| Image Scan        | Trivy   | OS vulnerability detection |
+| SBOM              | Syft    | Software inventory         |
+| Image Signing     | Cosign  | Supply chain integrity     |
+| Admission Control | Kyverno | Enforce signed images      |
+
+Only **signed images from the CI pipeline** can run inside the cluster.
+
+---
+
+## 6️⃣ Infrastructure as Code (Terraform)
+
+* Modular architecture
+* Remote backend (S3)
+* State locking (DynamoDB)
+* KMS encryption
+* Drift detection
+
+### Modules
+
+* VPC
+* EKS
+* RDS
+* Redis
+* ECR
+* Security (KMS / SG)
+* Logging
+
+---
+
+## 7️⃣ Secrets & Access Management
+
+* HashiCorp Vault integration
+* Vault Agent Injector
+* Kubernetes Auth Method
+* Dynamic secret injection
+* No hardcoded credentials
+
+Secrets exist **only in memory at runtime**.
+
+---
+
+## 8️⃣ CI/CD Pipeline Architecture
+
+Platform: **Azure DevOps**
+
+### Infra Pipeline
+
+1. Trivy IaC Scan
+2. Terraform Init / Plan / Apply
+3. Post-Provision Security Setup
+
+### Application Pipelines
+
+1. Build Docker Image
+2. Trivy Image Scan
+3. Generate SBOM
+4. Cosign Sign
+5. Push to ECR
+6. Helm Deploy to EKS
+
+---
+
+# 🔐 Security Model (Defense in Depth)
+
+| Layer        | Control                 |
+| ------------ | ----------------------- |
+| Edge         | CloudFront + WAF        |
+| Network      | Security Groups + NACL  |
+| Compute      | Non-root containers     |
+| Supply Chain | Signed images only      |
+| Secrets      | Vault dynamic injection |
+| Data         | KMS encryption          |
+| State        | Encrypted S3 backend    |
+| Governance   | Kyverno                 |
+
+---
+
+# 📈 High Availability Strategy
+
+* Multi-AZ subnets
+* RDS Multi-AZ standby
+* EKS managed node groups
+* Auto Scaling
+* Stateless frontend/backend pods
+
+---
+
+# 💡 Why This Architecture Is Production-Ready
+
+✔ Zero public database exposure
+✔ Immutable infrastructure
+✔ Encrypted everywhere
+✔ Policy-driven Kubernetes governance
+✔ Supply chain secured
+✔ Remote Terraform backend with locking
+✔ Modular and reusable design
+
+---
+
+# 🧠 Architectural Principles Applied
+
+* Least Privilege
+* Immutable Infrastructure
+* Security by Default
+* Infrastructure as Code
+* GitOps-style deployment
+* Shift-Left Security
+* Defense in Depth
+
+---
