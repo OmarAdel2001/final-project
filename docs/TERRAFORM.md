@@ -10,25 +10,7 @@ The solution deploys a highly available, secure, and compliant environment on **
 
 The infrastructure is organized into a modular hierarchy, controlled by a root orchestration module.
 
-```mermaid
-graph TD
-    Root[Root Module (main.tf)] --> VPC[VPC Module]
-    Root --> Security[Security Module]
-    Root --> ECR[ECR Module]
-    
-    VPC --> EKS[EKS Module]
-    VPC --> RDS[RDS Module]
-    VPC --> Redis[Redis Module]
-    VPC --> ALB[ALB Module]
-    
-    Security -->|KMS Keys| EKS
-    Security -->|KMS Keys| RDS
-    Security -->|KMS Keys| Redis
-    Security -->|KMS Keys| Logging[Logging Module]
-    
-    EKS -->|Node SG| RDS
-    EKS -->|Node SG| Redis
-```
+<img width="1024" height="1536" alt="architecture" src="https://github.com/user-attachments/assets/00c3823d-3069-4d1b-b97b-84f7af1b9916" />
 
 ## Detailed Component Analysis
 
